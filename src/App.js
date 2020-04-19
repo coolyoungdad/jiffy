@@ -2,6 +2,7 @@ import React, {Component} from 'react';
 import Header from './components/header';
 import UserHint from './components/userhint';
 import randomChoice from './components/randomchoice';
+import Gif from './components/gif';
 
 class App extends Component {
     constructor(props) {
@@ -9,23 +10,38 @@ class App extends Component {
         this.state = {
             searchTerm: '',
             hintText: '',
-            gif: null,
+            loading: false,
             gifs: []
         }
     }
 
     searchGiphy = async searchTerm => {
+        this.setState({
+          loading: true
+        })
         try {
             const response = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=pI6CoKK0TJLzPfyCP1hY5NYQyNGtKiob&q=${searchTerm}&limit=1000&offset=0&rating=R&lang=en`);
             const {data} = await response.json();
+
+            if (!data.length){
+              throw `Nothing found for ${searchTerm}`
+            }
+
             const randomGif = randomChoice(data)
             this.setState((prevState, props) => ({
               ...prevState,
-              gif: randomGif,
+              loading:false,
+              hintText: `Hit enter to see more ${searchTerm}`,
               gifs: [...prevState.gifs, randomGif]
             }))
+
         } catch (error) {
-            alert(error);
+          this.setState((prevState, props) => ({
+            ...prevState,
+            hintText: error,
+            loading: false,
+          }));
+            console.log(error)
         }
     }
 
@@ -46,17 +62,26 @@ class App extends Component {
         }
     }
 
+    clearSearch = () => {
+      this.setState((prevState, props) => ({
+        ...prevState,
+        searchTerm: '',
+        hintText: '',
+        gifs: []
+      }));
+      this.textInput.focus();
+    }
+
     render() {
-        const {searchTerm, gif} = this.state;
+        const {searchTerm, gifs} = this.state;
+        const hasResults = gifs.length;
         return (
             <div className="page">
-                <Header/>
+                <Header clearSearch={this.clearSearch} hasResults={hasResults}/>
                 <div className='search grid'>
-                    {/*Stuff goes here*/}
-                    {/* {gif && <video className='grid-item video' autoPlay loop src={gif.images.original.mp4}/>}    */}
 
                     {this.state.gifs.map(gif => (
-                      <video className='grid-item video' autoPlay loop src={gif.images.original.mp4}/>
+                      <Gif {...gif}/>
                     ))}
 
                     <input
@@ -64,7 +89,10 @@ class App extends Component {
                         placeholder='Type something'
                         onChange={this.handleChange}
                         onKeyPress={this.handleKeyPress}
-                        value={searchTerm}/>
+                        value={searchTerm}
+                        ref = {(input) => {this.textInput = input;}}
+                    />
+                        
                 </div>
                 <UserHint {...this.state}/>
             </div>
